@@ -6,26 +6,29 @@ module Associatable
 
   def has_one_through(name, through_name, source_name)
     define_method(name) do
+      through_options = self.class.assoc_options[through_name]
+      source_options = through_options.model_class.assoc_options[source_name]
+
       results = DBConnection.execute(<<-SQL)
       SELECT
-        *
+        #{source_options.table_name}.*
       FROM
-        #{self.class.assoc_options[source_name].table_name}
+        #{through_options.table_name}
       JOIN
-        #{self.class.assoc_options[through_name].table_name}
+        #{source_options.table_name}
       ON
-        #{self.class.assoc_options[through_name].foreign_key} =
-          #{self.class.assoc_options[source_name].primary_key}
+        #{through_options.table_name}.#{source_options.primary_key} =
+        #{source_options.table_name}.#{source_options.primary_key}
       WHERE
-        #{self.class.assoc_options[source_name].primary_key} =
-          #{send(self.class.assoc_options[through_name].foreign_key)}
+        #{source_options.table_name}.#{source_options.primary_key} =
+        #{send(through_options.foreign_key)}
       SQL
 
-      objects = []
+      objects = [] #will be useful for has_many implementation
       results.each do |result|
-        objects << options.model_class.new(result)
+        objects << source_options.model_class.new(result)
       end
-      objects
+      objects.first
     end
 
   end
